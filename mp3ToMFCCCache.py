@@ -1,8 +1,10 @@
+import fnmatch
 import tempfile
 import os
 import pydub
 import scipy
 import scipy.io.wavfile
+import sys
 import numpy as np
 from scikits.talkbox.features import mfcc
 
@@ -26,15 +28,26 @@ def read_mp3(file_path, as_float = False):
         data = data/(2**15)
     return rate, data
 
-file_path = '/home/vlad/audio/dataset/'
-file_path_cache = '/home/vlad/audio/dataset_cache/'
 
-for file in os.listdir(file_path):
-    path, ext = os.path.splitext(file)
-    assert ext == '.mp3'
-    rate, data = read_mp3(file_path + file)
-    mon = []
-    for row in data:
-        mon.append(row)
-    ceps, mspec, spec = mfcc(mon)
-    np.save(file_path_cache + path, ceps)
+def read_files_recursive(directory_path, pattern = '*.mp3'):
+    matches = []
+
+    for root, dirnames, filenames in os.walk(directory_path):
+        for filename in fnmatch.filter(filenames, pattern):
+            mp3tofmcc(os.path.join(root, filename), filename, file_path_cache)
+            matches.append(os.path.join(root, filename))
+
+    return matches
+
+
+def mp3tofmcc(file_path, filename, file_path_output):
+    path, ext = os.path.splitext(filename)
+    rate, data = read_mp3(file_path)
+    ceps, mspec, spec = mfcc(data)
+    np.save(file_path_output + path, ceps)
+
+
+file_path = sys.argv[1]
+file_path_cache = sys.argv[2]
+
+print read_files_recursive(file_path, '*.mp3')
